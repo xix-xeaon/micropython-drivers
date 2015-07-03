@@ -6,3 +6,7 @@ Simple access to the linear acceleration, gauss magnetic and dps angular rate se
 
 ## ADXL335.py
 Normalized values from the ADXL335.
+
+## NMEAGPS.py
+A basic GPS NMEA reader for UART on micropython.
+
