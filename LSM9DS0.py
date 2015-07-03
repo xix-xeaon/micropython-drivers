@@ -1,18 +1,16 @@
 """
 Simple access to the linear acceleration, gauss magnetic and dps angular rate sensors of the LSM9DS0 through I2C for micropython.
 
-Made by xix xeaon @ XIXIT.
+Values are not normalized yet, and no options are possible yet.
+
+Based on SparkFun 9 Degrees of Freedom IMU Breakout: LSM9DS0.
+https://www.sparkfun.com/products/12636
+
+Code by xix xeaon @ XIXIT.
 
 Thanks to Jim Lindblom @ SparkFun Electronics and his SFE_LSM9DS0.cpp letting me know where to start
 
-Usage:
-import pyb, LSM9DS0
-i2c = pyb.I2C(2, mode=pyb.I2C.MASTER, baudrate=400000)
-lsm9ds0 = LSM9DS0.LSM9DS0(i2c)
-g, xm = lsm9ds0.init()
-x, y, z = lsm9ds0.accel.all()
-x = lsm9ds0.mag.x()
-z = lsm9ds0.gyro.z()
+See usage at the bottom.
 """
 
 
@@ -114,6 +112,56 @@ g_addr=0x6B
 xm_addr=0x1D
 
 class LSM9DS0():
+	def __init__(self, i2c, g_addr=0x6B, xm_addr=0x1D):
+		self.i2c = i2c
+		self.g_addr = g_addr
+		self.xm_addr = xm_addr
+		
+		self.gyro = LSM9DS0.Gyro(self)
+		self.accel = LSM9DS0.Accel(self)
+		self.mag = LSM9DS0.Mag(self)
+	
+	def init(self):
+		# init gyro
+		self.write_reg(G, CTRL_REG1_G, 0b00001111)
+		self.write_reg(G, CTRL_REG2_G, 0b00000000)
+		self.write_reg(G, CTRL_REG3_G, 0b10001000)
+		self.write_reg(G, CTRL_REG4_G, 0b00000000)
+		self.write_reg(G, CTRL_REG5_G, 0b00000000)
+		
+		# init accel
+		self.write_reg(XM, CTRL_REG0_XM, 0b00000000)
+		self.write_reg(XM, CTRL_REG1_XM, 0b01010111)
+		self.write_reg(XM, CTRL_REG2_XM, 0b00000000)
+		self.write_reg(XM, CTRL_REG3_XM, 0b00000100)
+		
+		# init mag
+		self.write_reg(XM, CTRL_REG4_XM, 0b00000100)
+		self.write_reg(XM, CTRL_REG5_XM, 0b10010100)
+		self.write_reg(XM, CTRL_REG6_XM, 0b00000000)
+		self.write_reg(XM, CTRL_REG7_XM, 0b00000000)
+		
+		return (
+			self.read_reg(G, WHO_AM_I_G),
+			self.read_reg(XM, WHO_AM_I_XM),
+		)
+	
+	def read_reg(self, slave, reg, data=1):
+		n_bytes = data if type(data) == int else len(data)
+		return self.i2c.mem_read(
+			data = data,
+			addr = self.g_addr if not slave else self.xm_addr,
+			memaddr = reg | 0x80 if n_bytes > 1 else reg,
+		)
+	
+	def write_reg(self, slave, reg, data=0):
+		self.i2c.mem_write(
+			data = data,
+			addr = self.g_addr if not slave else self.xm_addr,
+			memaddr = reg,
+		)
+	
+	
 	class Gyro():
 		def __init__(self, lsm9ds0):
 			self.lsm9ds0 = lsm9ds0
@@ -185,56 +233,21 @@ class LSM9DS0():
 				twos_comp(b[3]*256+b[2], 16),
 				twos_comp(b[5]*256+b[4], 16),
 			)
-	
-	def __init__(self, i2c, g_addr=0x6B, xm_addr=0x1D):
-		self.i2c = i2c
-		self.g_addr = g_addr
-		self.xm_addr = xm_addr
-		
-		self.gyro = LSM9DS0.Gyro(self)
-		self.accel = LSM9DS0.Accel(self)
-		self.mag = LSM9DS0.Mag(self)
-	
-	def init(self):
-		# init gyro
-		self.write_reg(G, CTRL_REG1_G, 0b00001111)
-		self.write_reg(G, CTRL_REG2_G, 0b00000000)
-		self.write_reg(G, CTRL_REG3_G, 0b10001000)
-		self.write_reg(G, CTRL_REG4_G, 0b00000000)
-		self.write_reg(G, CTRL_REG5_G, 0b00000000)
-		
-		# init accel
-		self.write_reg(XM, CTRL_REG0_XM, 0b00000000)
-		self.write_reg(XM, CTRL_REG1_XM, 0b01010111)
-		self.write_reg(XM, CTRL_REG2_XM, 0b00000000)
-		self.write_reg(XM, CTRL_REG3_XM, 0b00000100)
-		
-		# init mag
-		self.write_reg(XM, CTRL_REG4_XM, 0b00000100)
-		self.write_reg(XM, CTRL_REG5_XM, 0b10010100)
-		self.write_reg(XM, CTRL_REG6_XM, 0b00000000)
-		self.write_reg(XM, CTRL_REG7_XM, 0b00000000)
-		
-		return (
-			self.read_reg(G, WHO_AM_I_G),
-			self.read_reg(XM, WHO_AM_I_XM),
-		)
-	
-	def read_reg(self, slave, reg, data=1):
-		n_bytes = data if type(data) == int else len(data)
-		return self.i2c.mem_read(
-			data = data,
-			addr = self.g_addr if not slave else self.xm_addr,
-			memaddr = reg | 0x80 if n_bytes > 1 else reg,
-		)
-	
-	def write_reg(self, slave, reg, data=0):
-		self.i2c.mem_write(
-			data = data,
-			addr = self.g_addr if not slave else self.xm_addr,
-			memaddr = reg,
-		)
 
 
+
+if __name__ == "__main__":
+	import pyb
+	
+	i2c = pyb.I2C(2, mode=pyb.I2C.MASTER, baudrate=400000)
+	
+	lsm9ds0 = LSM9DS0(i2c)
+	g, xm = lsm9ds0.init()
+	
+	while True:
+		print(lsm9ds0.accel.all())
+		mag_x = lsm9ds0.mag.x()
+		gyro_z = lsm9ds0.gyro.z()
+		pyb.delay(100)
 
 
