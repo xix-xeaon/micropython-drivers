@@ -82,6 +82,8 @@ class NMEAGPS():
 			msg = verify_data(data)
 			if not msg: continue
 			
+			#print("debug: %s" % (msg,))
+			
 			if msg[0] == b'GPGGA': # Global Positioning System Fixed Data
 				self.handle_GPGGA(msg)
 			elif msg[0] == b'GPGSA': # GNSS DOP and Active Satellites
@@ -158,8 +160,8 @@ class NMEAGPS():
 			print("debug: unknown antenna: %s" % ant)
 	
 	def handle_GPRMC(self, msg):
-		if msg[4]:
-			self.date = (int(msg[4][:2]), int(msg[4][2:4]), int(msg[4][4:]))
+		if msg[9]:
+			self.date = (int(msg[9][:2]), int(msg[9][2:4]), int(msg[9][4:]))
 		else: self.date = None
 	
 	def handle_GPVTG(self, msg):
