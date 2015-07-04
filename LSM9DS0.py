@@ -1,7 +1,7 @@
 """
-Simple access to the linear acceleration, gauss magnetic and dps angular rate sensors of the LSM9DS0 through I2C for micropython.
+Simple access to the g-force linear acceleration, gauss magnetic and dps angular rate sensors of the LSM9DS0 through I2C for micropython.
 
-Values are not normalized yet, and no options are possible yet.
+Values are normalized to g-force, gauss and degrees per second for the default sensitivities, but no options are possible yet.
 
 Based on SparkFun 9 Degrees of Freedom IMU Breakout: LSM9DS0.
 https://www.sparkfun.com/products/12636
@@ -168,22 +168,22 @@ class LSM9DS0():
 		
 		def x(self):
 			b = self.lsm9ds0.read_reg(G, OUT_X_L_G, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*8.75/1000
 		
 		def y(self):
 			b = self.lsm9ds0.read_reg(G, OUT_Y_L_G, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*8.75/1000
 		
 		def z(self):
 			b = self.lsm9ds0.read_reg(G, OUT_Z_L_G, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*8.75/1000
 		
 		def all(self):
 			b = self.lsm9ds0.read_reg(G, OUT_X_L_G, 6)
 			return (
-				twos_comp(b[1]*256+b[0], 16),
-				twos_comp(b[3]*256+b[2], 16),
-				twos_comp(b[5]*256+b[4], 16),
+				twos_comp(b[1]*256+b[0], 16)*8.75/1000,
+				twos_comp(b[3]*256+b[2], 16)*8.75/1000,
+				twos_comp(b[5]*256+b[4], 16)*8.75/1000,
 			)
 	
 	class Mag():
@@ -192,22 +192,22 @@ class LSM9DS0():
 		
 		def x(self):
 			b = self.lsm9ds0.read_reg(XM, OUT_X_L_M, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*0.08/1000
 		
 		def y(self):
 			b = self.lsm9ds0.read_reg(XM, OUT_Y_L_M, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*0.08/1000
 		
 		def z(self):
 			b = self.lsm9ds0.read_reg(XM, OUT_Z_L_M, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*0.08/1000
 		
 		def all(self):
 			b = self.lsm9ds0.read_reg(XM, OUT_X_L_M, 6)
 			return (
-				twos_comp(b[1]*256+b[0], 16),
-				twos_comp(b[3]*256+b[2], 16),
-				twos_comp(b[5]*256+b[4], 16),
+				twos_comp(b[1]*256+b[0], 16)*0.08/1000,
+				twos_comp(b[3]*256+b[2], 16)*0.08/1000,
+				twos_comp(b[5]*256+b[4], 16)*0.08/1000,
 			)
 	
 	class Accel():
@@ -216,22 +216,22 @@ class LSM9DS0():
 		
 		def x(self):
 			b = self.lsm9ds0.read_reg(XM, OUT_X_L_A, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			return twos_comp(b[1]*256+b[0], 16)*0.061/1000
 		
 		def y(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_X_L_A, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			b = self.lsm9ds0.read_reg(XM, OUT_Y_L_A, 2)
+			return twos_comp(b[1]*256+b[0], 16)*0.061/1000
 		
 		def z(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_X_L_A, 2)
-			return twos_comp(b[1]*256+b[0], 16)
+			b = self.lsm9ds0.read_reg(XM, OUT_Z_L_A, 2)
+			return twos_comp(b[1]*256+b[0], 16)*0.061/1000
 		
 		def all(self):
 			b = self.lsm9ds0.read_reg(XM, OUT_X_L_A, 6)
 			return (
-				twos_comp(b[1]*256+b[0], 16),
-				twos_comp(b[3]*256+b[2], 16),
-				twos_comp(b[5]*256+b[4], 16),
+				twos_comp(b[1]*256+b[0], 16)*0.061/1000,
+				twos_comp(b[3]*256+b[2], 16)*0.061/1000,
+				twos_comp(b[5]*256+b[4], 16)*0.061/1000,
 			)
 
 
@@ -239,7 +239,7 @@ class LSM9DS0():
 if __name__ == "__main__":
 	import pyb
 	
-	i2c = pyb.I2C(2, mode=pyb.I2C.MASTER, baudrate=400000)
+	i2c = pyb.I2C(2, mode=pyb.I2C.MASTER, baudrate=100000)
 	
 	lsm9ds0 = LSM9DS0(i2c)
 	g, xm = lsm9ds0.init()
