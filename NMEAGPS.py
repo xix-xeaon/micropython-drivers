@@ -10,6 +10,32 @@ See usage at the bottom.
 """
 
 
+FXT_NONE   = 0
+FXT_NORMAL = 1
+FXT_DIFFER = 2
+FXT_dict = {0:"NONE", 1:"NORMAL", 2:"DIFFER"}
+
+FXD_NONE = 1
+FXD_2D   = 2
+FXD_3D   = 3
+
+FXD_dict = {1:"NONE", 2:"2D", 3:"3D"}
+
+ANT_ACTIVE_SHORT = 1
+ANT_INTERNAL     = 2
+ANT_ACTIVE       = 3
+ANT_dict = {1:"ACTIVE_SHORT", 2:"INTERNAL", 3:"ACTIVE"}
+
+message_lengths = {
+	"GPGGA": 15,
+	"GPGSA": 18,
+	#"GPGSV": 0,
+	"GPRMC": 13,
+	"GPVTG": 10,
+	"PGTOP": 2,
+}
+
+
 def nmea_checksum(d):
 	c = 0
 	for x in d:
@@ -31,27 +57,15 @@ def verify_data(data):
 	if not cs == nmea_checksum(msg):
 		return False
 	
-	return msg.split(b',')
+	msg = msg.split(b',')
+	if msg[0] in message_lengths and not len(msg) == message_lengths[msg[0]]:
+		return False
+	
+	return msg
 
 def deg2dec(d):
 	return int(d[:-7]) + float(d[-7:].decode())/60
 
-
-FXT_NONE   = 0
-FXT_NORMAL = 1
-FXT_DIFFER = 2
-FXT_dict = {0:"NONE", 1:"NORMAL", 2:"DIFFER"}
-
-FXD_NONE = 1
-FXD_2D   = 2
-FXD_3D   = 3
-
-FXD_dict = {1:"NONE", 2:"2D", 3:"3D"}
-
-ANT_ACTIVE_SHORT = 1
-ANT_INTERNAL     = 2
-ANT_ACTIVE       = 3
-ANT_dict = {1:"ACTIVE_SHORT", 2:"INTERNAL", 3:"ACTIVE"}
 
 class NMEAGPS():
 	def __init__(self, uart):
