@@ -117,9 +117,9 @@ class LSM9DS0():
 		self.g_addr = g_addr
 		self.xm_addr = xm_addr
 		
-		self.gyro = LSM9DS0.Gyro(self)
-		self.accel = LSM9DS0.Accel(self)
-		self.mag = LSM9DS0.Mag(self)
+		self.gyro = LSM9DS0.SensorInterface(self, G, OUT_X_L_G, OUT_Y_L_G, OUT_Z_L_G, 8.75/1000)
+		self.mag = LSM9DS0.SensorInterface(self, XM, OUT_X_L_M, OUT_Y_L_M, OUT_Z_L_M, 0.08/1000)
+		self.accel = LSM9DS0.SensorInterface(self, XM, OUT_X_L_A, OUT_Y_L_A, OUT_Z_L_A, 0.061/1000)
 	
 	def init(self):
 		# init gyro
@@ -162,76 +162,34 @@ class LSM9DS0():
 		)
 	
 	
-	class Gyro():
-		def __init__(self, lsm9ds0):
-			self.lsm9ds0 = lsm9ds0
-		
-		def x(self):
-			b = self.lsm9ds0.read_reg(G, OUT_X_L_G, 2)
-			return twos_comp(b[1]*256+b[0], 16)*8.75/1000
-		
-		def y(self):
-			b = self.lsm9ds0.read_reg(G, OUT_Y_L_G, 2)
-			return twos_comp(b[1]*256+b[0], 16)*8.75/1000
-		
-		def z(self):
-			b = self.lsm9ds0.read_reg(G, OUT_Z_L_G, 2)
-			return twos_comp(b[1]*256+b[0], 16)*8.75/1000
-		
-		def all(self):
-			b = self.lsm9ds0.read_reg(G, OUT_X_L_G, 6)
-			return (
-				twos_comp(b[1]*256+b[0], 16)*8.75/1000,
-				twos_comp(b[3]*256+b[2], 16)*8.75/1000,
-				twos_comp(b[5]*256+b[4], 16)*8.75/1000,
-			)
 	
-	class Mag():
-		def __init__(self, lsm9ds0):
+	class SensorInterface():
+		def __init__(self, lsm9ds0, slave, x_reg, y_reg, z_reg, bit_value):
 			self.lsm9ds0 = lsm9ds0
+			self.slave = slave
+			self.x_reg = x_reg
+			self.y_reg = y_reg
+			self.z_reg = z_reg
+			self.bit_value = bit_value
 		
 		def x(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_X_L_M, 2)
-			return twos_comp(b[1]*256+b[0], 16)*0.08/1000
+			b = self.lsm9ds0.read_reg(self.slave, self.x_reg, 2)
+			return twos_comp(b[1]*256+b[0], 16)*self.bit_value
 		
 		def y(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_Y_L_M, 2)
-			return twos_comp(b[1]*256+b[0], 16)*0.08/1000
+			b = self.lsm9ds0.read_reg(self.slave, self.y_reg, 2)
+			return twos_comp(b[1]*256+b[0], 16)*self.bit_value
 		
 		def z(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_Z_L_M, 2)
-			return twos_comp(b[1]*256+b[0], 16)*0.08/1000
+			b = self.lsm9ds0.read_reg(self.slave, self.z_reg, 2)
+			return twos_comp(b[1]*256+b[0], 16)*self.bit_value
 		
 		def all(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_X_L_M, 6)
+			b = self.lsm9ds0.read_reg(self.slave, self.x_reg, 6)
 			return (
-				twos_comp(b[1]*256+b[0], 16)*0.08/1000,
-				twos_comp(b[3]*256+b[2], 16)*0.08/1000,
-				twos_comp(b[5]*256+b[4], 16)*0.08/1000,
-			)
-	
-	class Accel():
-		def __init__(self, lsm9ds0):
-			self.lsm9ds0 = lsm9ds0
-		
-		def x(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_X_L_A, 2)
-			return twos_comp(b[1]*256+b[0], 16)*0.061/1000
-		
-		def y(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_Y_L_A, 2)
-			return twos_comp(b[1]*256+b[0], 16)*0.061/1000
-		
-		def z(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_Z_L_A, 2)
-			return twos_comp(b[1]*256+b[0], 16)*0.061/1000
-		
-		def all(self):
-			b = self.lsm9ds0.read_reg(XM, OUT_X_L_A, 6)
-			return (
-				twos_comp(b[1]*256+b[0], 16)*0.061/1000,
-				twos_comp(b[3]*256+b[2], 16)*0.061/1000,
-				twos_comp(b[5]*256+b[4], 16)*0.061/1000,
+				twos_comp(b[1]*256+b[0], 16)*self.bit_value,
+				twos_comp(b[3]*256+b[2], 16)*self.bit_value,
+				twos_comp(b[5]*256+b[4], 16)*self.bit_value,
 			)
 
 
