@@ -14,13 +14,6 @@ See usage at the bottom.
 """
 
 
-# thanks travc @ stackoverflow
-def twos_comp(val, bits=8):
-	if (val & (1 << (bits - 1))) != 0:
-		val = val - (1 << bits)
-	return val
-
-
 G = 0 # Angular rate sensor
 WHO_AM_I_G = 0x0F
 CTRL_REG1_G = 0x20
@@ -106,6 +99,13 @@ TIME_LATENCY = 0x3C
 TIME_WINDOW = 0x3D
 Act_THS = 0x3E
 Act_DUR = 0x3F
+
+
+# thanks travc @ stackoverflow
+def twos_comp(val, bits=8):
+	if (val & (1 << (bits - 1))) != 0:
+		val = val - (1 << bits)
+	return val
 
 
 class LSM9DS0():
