@@ -1,7 +1,7 @@
 """
 Simple access to the g-force linear acceleration, gauss magnetic and dps angular rate sensors of the LSM9DS0 through I2C for micropython.
 
-Values are normalized to g-force, gauss and degrees per second for the default sensitivities, but no options are possible yet.
+Values are normalized to g-force, gauss and degrees per second according to selected sensitivities.
 
 Based on SparkFun 9 Degrees of Freedom IMU Breakout: LSM9DS0.
 https://www.sparkfun.com/products/12636
@@ -108,39 +108,35 @@ Act_THS = 0x3E
 Act_DUR = 0x3F
 
 
-g_addr=0x6B
-xm_addr=0x1D
-
 class LSM9DS0():
-	def __init__(self, i2c, g_addr=0x6B, xm_addr=0x1D):
+	def __init__(self, i2c, g_sens=None, a_sens=None, m_sens=None, g_addr=0x6B, xm_addr=0x1D):
 		self.i2c = i2c
 		self.g_addr = g_addr
 		self.xm_addr = xm_addr
 		
-		self.gyro = LSM9DS0.SensorInterface(self, G, OUT_X_L_G, OUT_Y_L_G, OUT_Z_L_G, 8.75/1000)
-		self.mag = LSM9DS0.SensorInterface(self, XM, OUT_X_L_M, OUT_Y_L_M, OUT_Z_L_M, 0.08/1000)
-		self.accel = LSM9DS0.SensorInterface(self, XM, OUT_X_L_A, OUT_Y_L_A, OUT_Z_L_A, 0.061/1000)
-	
-	def init(self):
 		# init gyro
 		self.write_reg(G, CTRL_REG1_G, 0b00001111)
 		self.write_reg(G, CTRL_REG2_G, 0b00000000)
 		self.write_reg(G, CTRL_REG3_G, 0b10001000)
 		self.write_reg(G, CTRL_REG4_G, 0b00000000)
 		self.write_reg(G, CTRL_REG5_G, 0b00000000)
+		self.gyro = LSM9DS0.Gyro(self, sens=g_sens)
 		
 		# init accel
 		self.write_reg(XM, CTRL_REG0_XM, 0b00000000)
 		self.write_reg(XM, CTRL_REG1_XM, 0b01010111)
 		self.write_reg(XM, CTRL_REG2_XM, 0b00000000)
 		self.write_reg(XM, CTRL_REG3_XM, 0b00000100)
+		self.accel = LSM9DS0.Accel(self, sens=a_sens)
 		
 		# init mag
 		self.write_reg(XM, CTRL_REG4_XM, 0b00000100)
 		self.write_reg(XM, CTRL_REG5_XM, 0b10010100)
 		self.write_reg(XM, CTRL_REG6_XM, 0b00000000)
 		self.write_reg(XM, CTRL_REG7_XM, 0b00000000)
-		
+		self.mag = LSM9DS0.Mag(self, sens=m_sens)
+	
+	def who_am_i(self):
 		return (
 			self.read_reg(G, WHO_AM_I_G),
 			self.read_reg(XM, WHO_AM_I_XM),
@@ -161,36 +157,85 @@ class LSM9DS0():
 			memaddr = reg,
 		)
 	
+	def update_reg(self, slave, reg, value, mask):
+		reg_val = self.read_reg(slave, reg)[0]
+		reg_new = reg_val & ~mask | value & mask
+		self.write_reg(slave, reg, reg_new)
 	
 	
 	class SensorInterface():
-		def __init__(self, lsm9ds0, slave, x_reg, y_reg, z_reg, bit_value):
+		""" these interfaces are intended for simple usage of the device without having to read the device docs """
+		sens_bits = {}
+		sens_reg = (None, None)
+		slave = None
+		out_regs = (None, None, None)
+		
+		def __init__(self, lsm9ds0, sens=None):
 			self.lsm9ds0 = lsm9ds0
-			self.slave = slave
-			self.x_reg = x_reg
-			self.y_reg = y_reg
-			self.z_reg = z_reg
-			self.bit_value = bit_value
+			self.set_sens(sens)
 		
 		def x(self):
-			b = self.lsm9ds0.read_reg(self.slave, self.x_reg, 2)
-			return twos_comp(b[1]*256+b[0], 16)*self.bit_value
+			b = self.lsm9ds0.read_reg(self.slave, self.out_regs[0], 2)
+			return twos_comp(b[1]*256+b[0], 16) * self.sens_bits[self.sens][1]
 		
 		def y(self):
-			b = self.lsm9ds0.read_reg(self.slave, self.y_reg, 2)
-			return twos_comp(b[1]*256+b[0], 16)*self.bit_value
+			b = self.lsm9ds0.read_reg(self.slave, self.out_regs[1], 2)
+			return twos_comp(b[1]*256+b[0], 16) * self.sens_bits[self.sens][1]
 		
 		def z(self):
-			b = self.lsm9ds0.read_reg(self.slave, self.z_reg, 2)
-			return twos_comp(b[1]*256+b[0], 16)*self.bit_value
+			b = self.lsm9ds0.read_reg(self.slave, self.out_regs[2], 2)
+			return twos_comp(b[1]*256+b[0], 16) * self.sens_bits[self.sens][1]
 		
 		def all(self):
-			b = self.lsm9ds0.read_reg(self.slave, self.x_reg, 6)
+			b = self.lsm9ds0.read_reg(self.slave, self.out_regs[0], 6)
 			return (
-				twos_comp(b[1]*256+b[0], 16)*self.bit_value,
-				twos_comp(b[3]*256+b[2], 16)*self.bit_value,
-				twos_comp(b[5]*256+b[4], 16)*self.bit_value,
+				twos_comp(b[1]*256+b[0], 16) * self.sens_bits[self.sens][1],
+				twos_comp(b[3]*256+b[2], 16) * self.sens_bits[self.sens][1],
+				twos_comp(b[5]*256+b[4], 16) * self.sens_bits[self.sens][1],
 			)
+		
+		def set_sens(self, sens=None):
+			if sens is None:
+				sens = min(self.sens_bits)
+			elif not sens in self.sens_bits:
+				raise ValueError('Bad sens: %s for %s; Possible: %s' % (
+					sens, self.__class__.__name__, sorted(self.sens_bits.keys())
+				))
+			self.lsm9ds0.update_reg(self.slave, self.sens_reg[0], self.sens_bits[sens][0] << self.sens_reg[2], self.sens_reg[1])
+			self.sens = sens
+	
+	class Gyro(SensorInterface):
+		sens_bits = {
+			 245: (0b00,  8.75/1000),
+			 500: (0b01, 17.50/1000),
+			2000: (0b10, 70.00/1000),
+		}
+		sens_reg = (CTRL_REG4_G, 0b00110000, 4)
+		slave = G
+		out_regs = (OUT_X_L_G, OUT_Y_L_G, OUT_Z_L_G)
+	
+	class Accel(SensorInterface):
+		sens_bits = {
+			 2: (0b000, 0.061/1000),
+			 4: (0b001, 0.122/1000),
+			 6: (0b010, 0.183/1000),
+			 8: (0b011, 0.244/1000),
+			16: (0b100, 0.732/1000),
+		}
+		sens_reg = (CTRL_REG2_XM, 0b00111000, 3)
+		slave = XM
+		out_regs = (OUT_X_L_A, OUT_Y_L_A, OUT_Z_L_A)
+	
+	class Mag(SensorInterface):
+		sens_bits = {
+			 2: (0b00, 0.08/1000),
+			 4: (0b01, 0.16/1000),
+			 8: (0b10, 0.32/1000),
+			12: (0b11, 0.48/1000),
+		}
+		sens_reg = (CTRL_REG6_XM, 0b01100000, 5)
+		slave = XM
+		out_regs = (OUT_X_L_M, OUT_Y_L_M, OUT_Z_L_M)
 
 
 
@@ -199,8 +244,10 @@ if __name__ == "__main__":
 	
 	i2c = pyb.I2C(2, mode=pyb.I2C.MASTER, baudrate=100000)
 	
-	lsm9ds0 = LSM9DS0(i2c)
-	g, xm = lsm9ds0.init()
+	lsm9ds0 = LSM9DS0(i2c, g_sens=500, a_sens=4, m_sens=12)
+	#g_id, xm_id = lsm9ds0.who_am_i()
+	
+	lsm9ds0.accel.set_sens(16)
 	
 	while True:
 		print(lsm9ds0.accel.all())
