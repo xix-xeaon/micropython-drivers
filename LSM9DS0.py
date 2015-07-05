@@ -1,5 +1,6 @@
 """
-Simple access to the g-force linear acceleration, gauss magnetic and dps angular rate sensors of the LSM9DS0 through I2C for micropython.
+Simple access to the g-force linear acceleration, gauss magnetic and dps angular rate sensors of the
+LSM9DS0 through I2C for micropython.
 
 Values are normalized to g-force, gauss and degrees per second according to selected sensitivities.
 
